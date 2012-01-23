@@ -51,7 +51,11 @@ class ControlWidget(QWidget):
         # new style connection (more pythonic)
         capture.clicked.connect(fcapture)
         
-        
+#self.screenshot =
+#ImageItem(QtGui.QImage.fromData(self._menu_manager.getImage(self.name)),
+#550, imgHeight, self.scene(), self)
+#self.screenshot.setPos(150, self.description.pos().y() +
+#self.description.boundingRect().height() + 10)        
 
 class VideoGrabber(QWidget):
     
@@ -64,10 +68,10 @@ class VideoGrabber(QWidget):
         
         #
         #self.cameraWindow = QWidget(self)
-        self.setGeometry(QRect(530, 20, 256, 192))
+        self.setGeometry(QRect(530, 20, 720, 1280))
         self.setObjectName("cameraWindow")
-        self.setAttribute(0, 1); # AA_ImmediateWidgetCreation == 0
-        self.setAttribute(3, 1); # AA_NativeWindow == 3    
+        #self.setAttribute(0, 1); # AA_ImmediateWidgetCreation == 0
+        #self.setAttribute(3, 1); # AA_NativeWindow == 3    
         global wId
         wId = self.winId()
 
@@ -77,24 +81,46 @@ class Vid(object):
     def __init__(self, windowId):
         
         self.player = gst.Pipeline("player")
+        #self.player = gst.element_factory_make("playbin2", "player")
+        
+        
         self.source = gst.element_factory_make("v4l2src", "vsource")
         self.sink = gst.element_factory_make("autovideosink", "outsink")
         self.source.set_property("device", "/dev/video0")
+        
+        #colorspace = gst.element_factory_make("ffmpegcolorspace", "colorspace")
+        
+        #import pdb; pdb.set_trace()
+        
+        # rotate video into correct viewing pos
+        videoflip1 = gst.element_factory_make("videoflip")
+        videoflip1.set_property('method', 'counterclockwise')
+        
+        # flip horizontally to achieve mirror effect
+        videoflip2 = gst.element_factory_make("videoflip")
+        videoflip2.set_property('method', 4)
+        
+        #colorspace.set_property('method', 'counterclockwise')
+        #colorspace.set_property('method', 5)
+        #
+        
         #self.scaler = gst.element_factory_make("videoscale", "vscale")
         self.fvidscale = gst.element_factory_make("videoscale", "fvidscale")
         
-        #self.fvidscale_cap = gst.element_factory_make("capsfilter", "fvidscale_cap")
-        #self.fvidscale_cap.set_property('caps', gst.caps_from_string('video/x-raw-yuv, width=256, height=192'))
         
+        #videoflip = gst.element_factory_make("capsfilter", "videoflip")
+        #videoflip.set_property('rotate','clockwise')
+        
+
         self.fvidscale_cap = gst.element_factory_make("capsfilter", "fvidscale_cap")
-        self.fvidscale_cap.set_property('caps', gst.caps_from_string('video/x-raw-yuv, width=256, height=192'))
+        self.fvidscale_cap.set_property('caps', gst.caps_from_string('video/x-raw-yuv, width=720, height=1280'))
         
         self.window_id = None
         self.windowId = windowId
         #print windowId
     
-        self.player.add(self.source, self.fvidscale, self.fvidscale_cap, self.sink)
-        gst.element_link_many(self.source,self.fvidscale, self.fvidscale_cap, self.sink)
+        self.player.add(self.source, self.fvidscale, self.fvidscale_cap, self.sink, videoflip1, videoflip2)
+        gst.element_link_many(self.source,self.fvidscale, self.fvidscale_cap, videoflip1, videoflip2, self.sink)
     
         bus = self.player.get_bus()
         bus.add_signal_watch()
